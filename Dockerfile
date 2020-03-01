@@ -1,4 +1,4 @@
-FROM node:13.8.0-alpine3.10 as build
+FROM node:12.16.1-alpine3.10 as build
 
 # Create app directory
 RUN mkdir -p /usr/src/app
@@ -13,7 +13,7 @@ RUN apk add --no-cache make gcc g++ python && \
 COPY . /usr/src/app
 
 
-FROM node:13.8.0-alpine3.10
+FROM node:12.16.1-alpine3.10
 
 WORKDIR /usr/app
 COPY --from=build /usr/src/app .
