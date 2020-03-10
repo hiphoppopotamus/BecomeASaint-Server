@@ -1,10 +1,22 @@
 const db = require('../../config/db');
 
-exports.insert = async function (user_data) {
+exports.login = async function (email, password) {
     const connection = await db.getPool().getConnection();
 
-    let insertSQL = 'INSERT INTO User (name, email, password';
-    let valuesSQL = ') VALUES (?, ?, ?';
+    let values = [
+        [ email ],
+        [ password ]
+    ];
+
+    let query = 'SELECT user_id, auth_token FROM User WHERE email = ? AND password = ?';
+    const [ rows, _ ] = await connection.query(query, values);
+
+    return rows[0];
+};
+
+
+exports.insert = async function (user_data) {
+    const connection = await db.getPool().getConnection();
 
     let values = [
         [user_data['name'].toString()],
@@ -12,22 +24,24 @@ exports.insert = async function (user_data) {
         [user_data['password'].toString()]
     ];
 
+    let insertQuery = 'INSERT INTO User (name, email, password';
+    let valuesQuery = ') VALUES (?, ?, ?';
+
     if (user_data['city'] !== undefined) {
-        insertSQL += ', city';
-        valuesSQL += ', ?';
         values.push([user_data['city'].toString()]);
+        insertQuery += ', city';
+        valuesQuery += ', ?';
     }
 
     if (user_data['country'] !== undefined) {
-        insertSQL += ', country';
-        valuesSQL += ', ?';
         values.push([user_data['country'].toString()]);
+        insertQuery += ', country';
+        valuesQuery += ', ?';
     }
 
-    let sql = insertSQL + valuesSQL + ')';
-
+    let query = insertQuery + valuesQuery + ')';
     //try catch for this?
-    const [ rows, _ ] = await connection.query(sql, values);
+    const [ rows, _ ] = await connection.query(query, values);
 
     return rows;
 };
