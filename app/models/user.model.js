@@ -8,9 +8,11 @@ exports.login = async function (email, password) {
         [ password ]
     ];
 
-    let query = 'SELECT user_id, auth_token FROM User WHERE email = ? AND password = ?';
+    let query = 'SELECT user_id as userId, auth_token as token FROM User WHERE email = ? AND password = ?';
     const [ rows, _ ] = await connection.query(query, values);
-
+    // const jsonObj = {
+    //     UserId: rows[0].us
+    // }
     return rows[0];
 };
 
@@ -42,6 +44,5 @@ exports.insert = async function (user_data) {
     let query = insertQuery + valuesQuery + ')';
     //try catch for this?
     const [ rows, _ ] = await connection.query(query, values);
-
     return rows;
 };
