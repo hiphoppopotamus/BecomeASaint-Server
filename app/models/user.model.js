@@ -57,7 +57,6 @@ exports.login = async function (email, password, token) {
         [ token ],
         [ email ]
     ];
-
     // maybe do if rows none then break;
     let [rows] = await connection.query(query, values);
 
@@ -103,6 +102,7 @@ exports.validateUser = async function (userId) {
     return isValidUser;
 }
 
+
 exports.checkIfIsMyUser = async function (userId, authToken) {
     const connection = await db.getPool().getConnection();
     let query = 'SELECT * FROM User WHERE user_id = ? AND auth_token = ?';
@@ -124,7 +124,6 @@ exports.checkIfIsMyUser = async function (userId, authToken) {
 exports.getUser = async function (userId, isMyUser) {
     const connection = await db.getPool().getConnection();
     let query;
-
     if (isMyUser) {
         query = 'SELECT name, city, country, email ' +
                 'FROM User ' +

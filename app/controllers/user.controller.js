@@ -62,6 +62,7 @@ exports.create = async function (req, res) {
         res.statusMessage = "Internal Server Error";
         res.status(500)
             .send(`ERROR creating user ${err}`)
+        console.error(err);
     }
 };
 
@@ -140,33 +141,27 @@ exports.logout = async function (req, res) {
 
 
 exports.read = async function (req, res) {
-
-    if (req.headers['x-authorization'] === undefined) {
-        res.statusMessage = "Bad Request: X-Authorization token not supplied";
-        res.status(404)
-            .send('X-Authorization token not supplied');
-        return;
-    }
-
-    const userId = req.params.id.toString();
-    const auth_token = req.headers['x-authorization'].toString();
+    const userId = req.params.id;
     try {
         const isValidUser = await User.validateUser(userId);
         if (!isValidUser) {
             res.statusMessage = "User Not Found";
             res.status(404)
                 .send();
-        } else {
-            const isMyUser = await User.checkIfIsMyUser(userId, auth_token);
-            const response = await User.getUser(userId, isMyUser);
-            res.statusMessage = "OK";
-            res.status(200)
-                .send(response);
         }
+
+        const auth_token = req.headers['x-authorization'];
+        const isMyUser = await User.checkIfIsMyUser(userId, auth_token);
+        const response = await User.getUser(userId, isMyUser);
+        res.statusMessage = "OK";
+        res.status(200)
+            .send(response);
+
     } catch (err) {
         res.statusMessage = "Internal Server Error";
         res.status(500)
             .send(`ERROR getting user ${err}`)
+        console.error(err);
     }
     // check if userId matches wit token
 
