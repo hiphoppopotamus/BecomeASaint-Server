@@ -11,7 +11,6 @@ exports.getAll = async function () {
 exports.getAllWithQueryParameters = async function () {
     const connection = await db.getPool().getConnection();
     const sql = 'SELECT * FROM Petition';
-    "WOOO"
     const [rows, fields] = await connection.query(sql);
     return rows;
 }
