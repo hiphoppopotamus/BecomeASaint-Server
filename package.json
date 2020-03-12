@@ -7,10 +7,13 @@
   },
   "dependencies": {
     "body-parser": "^1.19.0",
+    "crypto-js": "^4.0.0",
+    "crypto-random-string": "^3.2.0",
     "dotenv": "^8.2.0",
+    "email-validator": "^2.0.4",
     "express": "^4.17.1",
     "humps": "^2.0.1",
-    "mz": "^2.7.0",
-    "mysql2": "^2.1.0"
+    "mysql2": "^2.1.0",
+    "mz": "^2.7.0"
   }
 }

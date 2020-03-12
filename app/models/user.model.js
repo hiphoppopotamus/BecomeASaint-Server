@@ -1,19 +1,41 @@
 const db = require('../../config/db');
 
-exports.login = async function (email, password) {
+exports.login = async function (email, password, token) {
     const connection = await db.getPool().getConnection();
-
+    let query = 'UPDATE User SET auth_token = ? WHERE email = ?';
     let values = [
+        [ token ],
+        [ email ]
+    ];
+
+    // maybe do if rows none then break;
+    let [rows] = await connection.query(query, values);
+
+    query = 'SELECT user_id as userId, auth_token as token FROM User WHERE email = ? AND password = ?';
+    values = [
         [ email ],
         [ password ]
     ];
 
-    let query = 'SELECT user_id as userId, auth_token as token FROM User WHERE email = ? AND password = ?';
-    const [ rows, _ ] = await connection.query(query, values);
-    // const jsonObj = {
-    //     UserId: rows[0].us
-    // }
+    [rows] = await connection.query(query, values);
+
     return rows[0];
+};
+
+exports.logout = async function (authToken) {
+    const connection = await db.getPool().getConnection();
+    let query = 'SELECT * FROM User WHERE auth_token = ?';
+    let [rows] = await connection.query(query, [authToken]);
+    let isLoggedOut = false;
+
+    if (rows[0] !== undefined) {
+        let userId = rows[0].user_id;
+        query = 'UPDATE User SET auth_token = null WHERE user_id = ?';
+        await connection.query(query, [userId]);
+        isLoggedOut = true;
+    }
+
+    return isLoggedOut;
 };
 
 
