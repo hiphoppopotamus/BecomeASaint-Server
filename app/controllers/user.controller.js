@@ -2,6 +2,9 @@ const User = require('../models/user.model');
 const emailValidator = require('email-validator');
 const cryptoRandomString = require('crypto-random-string');
 const _ = require('underscore');
+const fs = require('fs');
+
+const PHOTO_DIRECTORY = './storage/photos/';
 
 exports.create = async function (req, res) {
     const user_data = req.body;
@@ -168,14 +171,14 @@ exports.read = async function (req, res) {
     try {
         const isValidUser = await User.validateUser(userId);
         if (!isValidUser) {
-            res.statusMessage = 'User Not Found';
+            res.statusMessage = 'Not Found';
             res.status(404)
-                .send();
+                .send("User Not Found");
             return
         }
 
         const authToken = req.headers['x-authorization'];
-        const isMyUser = await User.checkIfIsMyUser(userId, authToken);
+        const isMyUser = await User.checkIfIsUserIdLoggedIn(userId, authToken);
         const response = await User.getUser(userId, isMyUser);
         res.statusMessage = 'OK';
         res.status(200)
@@ -192,9 +195,10 @@ exports.read = async function (req, res) {
 exports.update = async function (req, res) {
     // updating name, email, password, city, country
     const userId = req.params.id;
+    const authToken = req.headers['x-authorization'];
     try {
-        const authToken = req.headers['x-authorization'];
-        if (!authToken) {
+        let authTokenExists = await User.checkIfAuthTokenExists(authToken);
+        if (!authTokenExists) {
             res.statusMessage = 'Unauthorised';
             res.status(401)
                 .send('I am not logged in at all! Token is not provided!');
@@ -204,14 +208,14 @@ exports.update = async function (req, res) {
         const isValidUser = await User.validateUser(userId);
         if (!isValidUser) {
             console.log('User provided is not a valid user!');
-            res.statusMessage = 'User Not Found';
+            res.statusMessage = 'Not Found';
             res.status(404)
-                .send();
+                .send("User Not Found");
             return
         }
 
         // checks if user is logged in with user provided in params.id
-        const isMyUser = await User.checkIfIsMyUser(userId, authToken);
+        const isMyUser = await User.checkIfIsUserIdLoggedIn(userId, authToken);
         if (!isMyUser) {
             console.log('I am not logged in as user id from params!');
             res.statusMessage = 'Forbidden';
@@ -282,5 +286,168 @@ exports.update = async function (req, res) {
         console.error(err);
     }
 };
+
+
+exports.readPhoto = async function (req, res) {
+    const userId = req.params.id;
+    // check if user has photo
+    try {
+        const isValidUser = await User.validateUser(userId);
+        if (!isValidUser) {
+            console.log('User provided is not a valid user!');
+            res.statusMessage = 'Not Found';
+            res.status(404)
+                .send('User Not Found');
+            return
+        }
+
+        const filename = await User.getUserPhotoFilename(userId);
+        if (!filename) {
+            res.statusMessage = 'Not Found';
+            res.status(404)
+                .send('User does not have photo');
+        } else {
+            let photo = `${PHOTO_DIRECTORY}${filename}`;
+            console.log(photo);
+            res.statusMessage = 'OK';
+            res.status(200)
+                .download(photo);
+        }
+    } catch (err) {
+        res.statusMessage = 'Internal Server Error';
+        res.status(500).send();
+        console.error(err);
+    }
+};
+
+
+exports.uploadPhoto = async function (req, res) {
+    // Check if a user is logged in by validating userId and token
+
+    // if not logged in 401 Unauthorised (no auth token) or IF AUTH TOKEN IS NOT IN DATABASE
+    const userId = req.params.id;
+    const authToken = req.headers['x-authorization'];
+    try {
+        let authTokenExists = await User.checkIfAuthTokenExists(authToken);
+        if (!authTokenExists) {
+            res.statusMessage = 'Unauthorised';
+            res.status(401)
+                .send('I am not logged in at all! Token is not provided!');
+            return
+        }
+
+        // if user not valid (like user dont exist) 404
+        const isValidUser = await User.validateUser(userId);
+        if (!isValidUser) {
+            console.log('User provided is not a valid user!');
+            res.statusMessage = 'Not Found';
+            res.status(404)
+                .send("User Not Found");
+            return
+        }
+
+        // if logged in but not my token 403 Forbidden
+        const isMyUser = await User.checkIfIsUserIdLoggedIn(userId, authToken);
+        if (!isMyUser) {
+            console.log('I am not logged in as user id from params!');
+            res.statusMessage = 'Forbidden';
+            res.status(403)
+                .send('Cannot change other users photo');
+            return
+        }
+
+        let acceptableFormats = ['png', 'jpg', 'jpeg', 'gif'];
+        let format = req.headers['content-type'].toString().split('/')[1];
+        if (!acceptableFormats.includes(format)) {
+            res.statusMessage = `Bad Request: photo must be image/jpeg, image/png, image/gif type, but it was: image/${format}`;
+            res.status(400)
+                .send('Invalid file type');
+            return
+        }
+
+        let filename = `user_${userId}.${format}`;
+        await fs.writeFile('./storage/default/' + filename, req.body, 'binary', () => {});
+
+        let currentPhoto = await User.getUserPhotoFilename(userId);
+        let insertId = await User.insertPhoto(userId, filename);
+        if (!currentPhoto) {
+            res.statusMessage = 'Created';
+            res.status(201)
+                .send(`Inserted photo`);
+        } else {
+            res.statusMessage = 'OK';
+            res.status(200)
+                .send(`Inserted photo`);
+        }
+    } catch (err) {
+        res.statusMessage = 'Internal Server Error';
+        res.status(500).send();
+        console.error(err);
+    }
+};
+
+
+exports.deletePhoto = async function (req, res) {
+    const userId = req.params.id;
+    const authToken = req.headers['x-authorization'];
+    try {
+        let authTokenExists = await User.checkIfAuthTokenExists(authToken);
+        if (!authTokenExists) {
+            res.statusMessage = 'Unauthorised';
+            res.status(401)
+                .send('I am not logged in at all! Token is not provided!');
+            return
+        }
+
+        // if user not valid (like user dont exist) 404
+        const isValidUser = await User.validateUser(userId);
+        if (!isValidUser) {
+            console.log('User provided is not a valid user!');
+            res.statusMessage = 'Not Found';
+            res.status(404)
+                .send("User Not Found");
+            return
+        }
+
+        // if logged in but not my token 403 Forbidden
+        const isMyUser = await User.checkIfIsUserIdLoggedIn(userId, authToken);
+        if (!isMyUser) {
+            console.log('I am not logged in as user id from params!');
+            res.statusMessage = 'Forbidden';
+            res.status(403)
+                .send('Cannot change other users photo');
+            return
+        }
+
+        let currentPhoto = await User.getUserPhotoFilename(userId);
+        if (!currentPhoto) {
+            console.log('User provided does not have a photo to delete!');
+            res.statusMessage = 'Not Found';
+            res.status(404)
+                .send();
+            return
+        } else {
+            await User.deletePhoto(userId);
+            res.statusMessage = 'OK';
+            res.status(200)
+                .send(`Deleted photo`);
+        }
+    } catch (err) {
+        res.statusMessage = 'Internal Server Error';
+        res.status(500).send();
+        console.error(err);
+    }
+
+
+};
+
+
+// 401 Unauthorised if non-user tries to delete photo (x auth)
+// 404 Not Found if user logged in but cant find user
+// 403 Forbidden user logged in but not userId
+
+// 404 Not Found if user doesn't have image in db
+// 200 OK if deletion success
+
 
 

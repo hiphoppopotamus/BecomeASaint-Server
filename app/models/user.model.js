@@ -1,6 +1,5 @@
 const db = require('../../config/db');
 
-
 exports.checkIfUserInDatabase = async function (email) {
     const connection = await db.getPool().getConnection();
     let query = "SELECT * FROM User WHERE email = ?";
@@ -13,14 +12,11 @@ exports.checkIfUserInDatabase = async function (email) {
 
     connection.release();
     return isInDatabase;
-}
+};
 
 
 exports.insert = async function (user_data) {
     const connection = await db.getPool().getConnection();
-
-    console.log(user_data)
-
     let values = [
         [user_data['name'].toString()],
         [user_data['email'].toString()],
@@ -110,8 +106,7 @@ exports.validateUser = async function (userId) {
 };
 
 
-
-exports.checkIfIsMyUser = async function (userId, authToken) {
+exports.checkIfIsUserIdLoggedIn = async function (userId, authToken) {
     const connection = await db.getPool().getConnection();
     let query = 'SELECT * FROM User WHERE user_id = ? AND auth_token = ?';
     let values = [
@@ -148,6 +143,7 @@ exports.getUser = async function (userId, isMyUser) {
     return rows[0];
 };
 
+
 exports.checkIfEmailAlreadyInUse = async function (userId, email) {
     const connection = await db.getPool().getConnection();
     let query = 'SELECT * FROM User WHERE user_id != ? AND email = ?'
@@ -164,7 +160,8 @@ exports.checkIfEmailAlreadyInUse = async function (userId, email) {
 
     connection.release();
     return emailIsInUse;
-}
+};
+
 
 exports.checkCurrentPassword = async function (userId, currentPassword) {
     const connection = await db.getPool().getConnection();
@@ -182,15 +179,11 @@ exports.checkCurrentPassword = async function (userId, currentPassword) {
 
     connection.release();
     return isCurrentPassword;
-}
+};
 
 
 exports.alter = async function (userId, user_data) {
     const connection = await db.getPool().getConnection();
-
-    console.log(user_data.toString());
-
-
     let values = [];
     let updateQuery = 'UPDATE User SET ';
     let whereQuery = ' WHERE user_id = ?';
@@ -217,53 +210,59 @@ exports.alter = async function (userId, user_data) {
 
     connection.release();
     return rows.affectedRows;
+};
 
 
+exports.checkIfAuthTokenExists = async function (authToken) {
+    const connection = await db.getPool().getConnection();
+
+    let query = 'SELECT * FROM User WHERE auth_token = ?';
+    const [rows] = await connection.query(query, [authToken]);
+    let tokenExists = false;
+
+    if (rows[0]) {
+        tokenExists = true;
+    }
+
+    connection.release();
+    return tokenExists;
+};
 
 
+exports.getUserPhotoFilename = async function (userId) {
+    const connection = await db.getPool().getConnection();
+
+    let query = 'SELECT photo_filename as photoFilename FROM User WHERE user_id = ?';
+    const [rows] = await connection.query(query, [userId]);
+
+    connection.release();
+    return rows[0]['photoFilename'];
+};
 
 
-    // if (user_data['name'] !== undefined) {
-    //     values.push([user_data['name'].toString()]);
-    //     updateQuery += ' name = ?';
-    //     firstUpdated = user_data['name'];
-    // } else if (user_data['email'] !== undefined) {
-    //     values.push([user_data['email'].toString()]);
-    //     updateQuery += ' email = ?';
-    //     firstUpdated = user_data['email'];
-    // } else if (user_data['password'] !== undefined) {
-    //     values.push([user_data['password'].toString()]);
-    //     updateQuery += ' password = ?';
-    //     firstUpdated = user_data['password'];
-    // } else if (user_data['city'] !== undefined) {
-    //     values.push([user_data['city'].toString()]);
-    //     updateQuery += ' city = ?';
-    //     firstUpdated = user_data['city'];
-    // } else if (user_data['country'] !== undefined) {
-    //     values.push([user_data['country'].toString()]);
-    //     updateQuery += ' country = ?';
-    //     firstUpdated = user_data['country'];
-    // } else if (user_data['currentPassword'] !== undefined) {
-    //     values.push([user_data['currentPassword'].toString()]);
-    //     updateQuery += ' currentPassword = ?';
-    //     firstUpdated = user_data['currentPassword'];
-    // }
-    //
-    // if (user_data['name'] !== undefined) {
-    //     values.push([user_data['name'].toString()]);
-    //     insertQuery += ', city';
-    //     valuesQuery += ', ?';
-    // }
-    //
-    // if (user_data['country'] !== undefined) {
-    //     values.push([user_data['country'].toString()]);
-    //     insertQuery += ', country';
-    //     valuesQuery += ', ?';
-    // }
+exports.insertPhoto = async function (userId, filename) {
+    const connection = await db.getPool().getConnection();
+    let query = 'UPDATE User SET photo_filename = ? WHERE user_id = ?'
+    let values = [
+        [ filename ],
+        [ userId ]
+    ];
+
+    const [rows] = await connection.query(query, values);
+
+    connection.release();
+    return rows.insertId;
+};
 
 
+exports.deletePhoto = async function (userId) {
+    const connection = await db.getPool().getConnection();
+    let query = 'UPDATE User SET photo_filename = NULL WHERE user_id = ?';
 
-
+    const [rows] = await connection.query(query, [userId]);
+    connection.release();
+    console.log(rows);
+    return rows;
 }
 
 // how to let above model insert

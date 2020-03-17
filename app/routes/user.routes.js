@@ -13,4 +13,10 @@ module.exports = function (app) {
     app.route(app.rootUrl + '/users/:id')
         .get(users.read)
         .patch(users.update);
+
+    app.route(app.rootUrl + '/users/:id/photo')
+        .get(users.readPhoto)
+        .put(users.uploadPhoto)
+        .delete(users.deletePhoto)
 };
+

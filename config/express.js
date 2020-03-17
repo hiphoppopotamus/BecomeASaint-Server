@@ -13,6 +13,10 @@ module.exports = function () {
     app.use(allowCrossOriginRequestsMiddleware);
     app.use(bodyParser.json());
     app.use(bodyParser.raw({ type: 'text/plain' }));  // for the /executeSql endpoint
+    app.use(bodyParser.raw({ type: 'image/png' }));
+    app.use(bodyParser.raw({ type: 'image/jpeg' }));
+    app.use(bodyParser.raw({ type: 'image/gif' }));
+
 
     // DEBUG (you can remove these)
     app.use((req, res, next) => {

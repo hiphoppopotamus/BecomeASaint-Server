@@ -14,7 +14,6 @@ exports.list = async function (req, res) {
         console.log(req.uri);
 
         if (req.url == null) {
-            console.log("wooo");
             const result = await Petition.getAll();
         } else {
             const result = await Petition.getAllWithQueryParameters();
