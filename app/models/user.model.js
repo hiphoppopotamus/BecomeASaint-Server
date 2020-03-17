@@ -110,6 +110,7 @@ exports.validateUser = async function (userId) {
 };
 
 
+
 exports.checkIfIsMyUser = async function (userId, authToken) {
     const connection = await db.getPool().getConnection();
     let query = 'SELECT * FROM User WHERE user_id = ? AND auth_token = ?';
