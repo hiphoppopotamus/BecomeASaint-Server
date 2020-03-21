@@ -45,33 +45,6 @@ exports.create = async function (req, res) {
         }
     }
 
-
-    // let name = user_data['name'].toString();
-    // let email = user_data['email'].toString();
-    // let password = user_data['password'].toString();
-
-    // if (name.length < 1) {
-    //     res.statusMessage = 'Bad Request: data.name should NOT be shorter than 1 characters';
-    //     res.status(400)
-    //         .send('data.name should NOT be shorter than 1 characters');
-    //     return
-    // } else if (email.length < 1) {
-    //     res.statusMessage = 'Bad Request: data.email should NOT be shorter than 1 characters';
-    //     res.status(400)
-    //         .send('data.email should NOT be shorter than 1 characters');
-    //     return
-    // } else if (password.length < 1) {
-    //     res.statusMessage = 'Bad Request: data.password should NOT be shorter than 1 characters';
-    //     res.status(400)
-    //         .send('data.password should NOT be shorter than 1 characters');
-    //     return
-    // } else if (emailValidator.validate(email) === false) {
-    //     res.statusMessage = 'Bad Request: data.email should match format \'email\'';
-    //     res.status(400)
-    //         .send('Bad Request: data.email should match format \'email\'');
-    //     return
-    // }
-
     try {
         let email = user_data['email'].toString();
         const isInDatabase = await User.checkIfUserInDatabase(email);
@@ -437,10 +410,9 @@ exports.deletePhoto = async function (req, res) {
         res.status(500).send();
         console.error(err);
     }
-
-
 };
 
+// encrypt password mane
 
 // 401 Unauthorised if non-user tries to delete photo (x auth)
 // 404 Not Found if user logged in but cant find user
