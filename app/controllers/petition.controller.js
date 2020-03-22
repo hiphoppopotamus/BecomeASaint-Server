@@ -195,5 +195,5 @@ exports.read = async function (req, res) {
 
 
 exports.update = async function(req, res) {
-    
+
 }
