@@ -6,5 +6,6 @@ module.exports = function (app) {
         .post(petitions.create);
 
     app.route(app.rootUrl + '/petitions/:id')
-        .get(petitions.read);
-}
+        .get(petitions.read)
+        .patch(petitions.update);
+};

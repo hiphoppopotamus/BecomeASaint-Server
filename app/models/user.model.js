@@ -1,8 +1,12 @@
 const db = require('../../config/db');
+const bcrypt = require('bcrypt');
+
+const saltRounds = 10;
+
 
 exports.checkIfUserInDatabase = async function (email) {
     const connection = await db.getPool().getConnection();
-    let query = "SELECT * FROM User WHERE email = ?";
+    let query = `SELECT * FROM User WHERE email = ?`;
     let [rows] = await connection.query(query, email);
     let isInDatabase = false;
 
@@ -15,25 +19,29 @@ exports.checkIfUserInDatabase = async function (email) {
 };
 
 
-exports.insert = async function (user_data) {
+exports.insert = async function (userData) {
     const connection = await db.getPool().getConnection();
+
+    const plaintextPassword = userData['password'].toString();
+    const hash = bcrypt.hashSync(plaintextPassword, saltRounds);
+
     let values = [
-        [user_data['name'].toString()],
-        [user_data['email'].toString()],
-        [user_data['password'].toString()]
+        [userData['name'].toString()],
+        [userData['email'].toString()],
+        [hash]
     ];
 
-    let insertQuery = 'INSERT INTO User (name, email, password';
-    let valuesQuery = ') VALUES (?, ?, ?';
+    let insertQuery = `INSERT INTO User (name, email, password`;
+    let valuesQuery = `) VALUES (?, ?, ?`;
 
-    if (user_data['city'] !== undefined) {
-        values.push([user_data['city'].toString()]);
+    if (userData['city'] !== undefined) {
+        values.push([userData['city'].toString()]);
         insertQuery += ', city';
         valuesQuery += ', ?';
     }
 
-    if (user_data['country'] !== undefined) {
-        values.push([user_data['country'].toString()]);
+    if (userData['country'] !== undefined) {
+        values.push([userData['country'].toString()]);
         insertQuery += ', country';
         valuesQuery += ', ?';
     }
@@ -50,24 +58,25 @@ exports.insert = async function (user_data) {
 };
 
 
-exports.login = async function (email, password, token) {
+exports.updateToken = async function (email, token) {
     const connection = await db.getPool().getConnection();
-    let query = 'UPDATE User SET auth_token = ? WHERE email = ?';
+    const query = `UPDATE User SET auth_token = ? WHERE email = ?`;
     let values = [
         [ token ],
         [ email ]
     ];
-    // WHAT IF PASSWORD IS INCORRECT DOY
-    // maybe do if rows none then break;
     let [rows] = await connection.query(query, values);
 
-    query = 'SELECT user_id as userId, auth_token as token FROM User WHERE email = ? AND password = ?';
-    values = [
-        [ email ],
-        [ password ]
-    ];
+    console.log(rows[0]);
+    connection.release();
+    return rows[0];
+}
 
-    [rows] = await connection.query(query, values);
+
+exports.login = async function (email, token) {
+    const connection = await db.getPool().getConnection();
+    const query = `SELECT user_id as userId, auth_token as token FROM User WHERE email = ?`;
+    let [rows] = await connection.query(query, [email]);
 
     connection.release();
     return rows[0];
@@ -76,7 +85,7 @@ exports.login = async function (email, password, token) {
 
 exports.logout = async function (authToken) {
     const connection = await db.getPool().getConnection();
-    let query = 'SELECT * FROM User WHERE auth_token = ?';
+    let query = `SELECT * FROM User WHERE auth_token = ?`;
     let [rows] = await connection.query(query, [authToken]);
     let isLoggedOut = false;
 
@@ -177,43 +186,49 @@ exports.checkIfEmailAlreadyInUse = async function (userId, email) {
 };
 
 
-exports.checkCurrentPassword = async function (userId, currentPassword) {
+exports.checkCurrentPassword = async function (identifier, currentPassword) {
     const connection = await db.getPool().getConnection();
-    let query = 'SELECT * FROM User WHERE user_id = ? AND password = ?'
-    let values = [
-        [ userId ],
-        [ currentPassword ]
-    ];
-    let [rows] = await connection.query(query, values);
-    let isCurrentPassword = false;
 
-    if (rows[0] !== undefined) {
-        isCurrentPassword = true;
+    let hashQuery;
+    if (typeof identifier === "number") {
+        hashQuery = `SELECT password FROM User WHERE user_id = ?`;
     }
+
+    if (typeof identifier === "string") {
+        hashQuery = `SELECT password FROM User WHERE email = ?`;
+    }
+
+    let [hash] = await connection.query(hashQuery, [identifier]);
+    let isCurrentPassword = bcrypt.compareSync(currentPassword, hash[0]['password']);
 
     connection.release();
     return isCurrentPassword;
 };
 
 
-exports.alter = async function (userId, user_data) {
+exports.alter = async function (userId, userData) {
     const connection = await db.getPool().getConnection();
     let values = [];
     let updateQuery = 'UPDATE User SET ';
     let whereQuery = ' WHERE user_id = ?';
     let firstUpdated = true;
 
-    for (let property in user_data) {
+    for (let property in userData) {
         if (property === "currentPassword") {
             continue;
         }
 
+        if (property === "password") {
+            const plaintextPassword = userData[property].toString();
+            userData[property] = bcrypt.hashSync(plaintextPassword, saltRounds);
+        }
+
         if (firstUpdated) {
-            values.push([user_data[property].toString()]);
+            values.push([userData[property].toString()]);
             updateQuery += property + " = ?";
             firstUpdated = false;
         } else {
-            values.push([user_data[property].toString()]);
+            values.push([userData[property].toString()]);
             updateQuery += ", " + property + " = ?";
         }
     }
@@ -277,6 +292,4 @@ exports.deletePhoto = async function (userId) {
     connection.release();
     console.log(rows);
     return rows;
-}
-
-// how to let above model insert
+};

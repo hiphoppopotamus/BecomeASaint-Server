@@ -191,5 +191,9 @@ exports.read = async function (req, res) {
         res.status(500)
             .send(`ERROR getting petition ${err}`)
     }
+};
 
+
+exports.update = async function(req, res) {
+    
 }

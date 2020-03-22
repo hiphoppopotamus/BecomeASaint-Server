@@ -7,52 +7,52 @@ const fs = require('fs');
 const PHOTO_DIRECTORY = './storage/photos/';
 
 exports.create = async function (req, res) {
-    const user_data = req.body;
+    const userData = req.body;
 
-    if (user_data['name'] === undefined) {
+    if (userData['name'] === undefined) {
         res.statusMessage = 'Bad Request: Data should have required property name';
         res.status(400)
             .send('Data should have required property name');
         return
-    } else if (user_data['email'] === undefined) {
+    } else if (userData['email'] === undefined) {
         res.statusMessage = 'Bad Request: Data should have required property email';
         res.status(400)
             .send('Data should have required property email');
         return
-    } else if (user_data['password'] === undefined) {
+    } else if (userData['password'] === undefined) {
         res.statusMessage = 'Bad Request: Data should have required property password';
         res.status(400)
             .send('Data should have required property password');
         return
     }
 
-    for (let property in user_data) {
-        if (typeof user_data[property] !== "string") {
+    for (let property in userData) {
+        if (typeof userData[property] !== "string") {
             res.statusMessage = 'Bad Request: ' + property + ' should be string';
             res.status(400)
                 .send('Bad Request: ' + property + ' should be string');
             return
-        } else if (user_data[property].toString().length < 1) {
+        } else if (userData[property].toString().length < 1) {
             res.statusMessage = 'Bad Request: ' + property + ' should NOT be shorter than 1 characters';
             res.status(400)
                 .send('Bad Request: ' + property + ' should NOT be shorter than 1 characters');
             return
-        } else if (property === 'email' && !emailValidator.validate(user_data['email'].toString())) {
-            res.statusMessage = 'Bad Request: ' + user_data['email'] + ' should match format \'email\'';
+        } else if (property === 'email' && !emailValidator.validate(userData['email'].toString())) {
+            res.statusMessage = 'Bad Request: ' + userData['email'] + ' should match format \'email\'';
             res.status(400)
-                .send('Bad Request: ' + user_data['email'] + ' should match format \'email\'');
+                .send('Bad Request: ' + userData['email'] + ' should match format \'email\'');
             return
         }
     }
 
     try {
-        let email = user_data['email'].toString();
+        let email = userData['email'].toString();
         const isInDatabase = await User.checkIfUserInDatabase(email);
         if (isInDatabase) {
             res.statusMessage = 'Bad Request: email already in use';
             res.status(400).send();
         } else {
-            const userIdResponse = await User.insert(user_data);
+            const userIdResponse = await User.insert(userData);
             res.statusMessage = 'Created';
             res.status(201)
                 .send(userIdResponse);
@@ -67,32 +67,36 @@ exports.create = async function (req, res) {
 
 
 exports.login = async function (req, res) {
-    if (req.body.email === undefined) {
+    if (req.body['email'] === undefined) {
         res.statusMessage = 'Bad Request: Data should have required property email';
         res.status(400)
             .send('Data should have required property email');
         return
-    } else if (req.body.password === undefined) {
+    } else if (req.body['password'] === undefined) {
         res.statusMessage = 'Bad Request: Data should have required property password';
         res.status(400)
             .send('Data should have required property password');
         return
     }
 
-    let email = req.body.email.toString();
-    let password = req.body.password.toString();
+    for (let property in req.body) {
+        if (typeof req.body[property] !== "string") {
+            res.statusMessage = 'Bad Request: ' + property + ' should be string';
+            res.status(400)
+                .send('Bad Request: ' + property + ' should be string');
+            return
+        } else if (req.body[property].toString().length < 1) {
+            res.statusMessage = 'Bad Request: ' + property + ' should NOT be shorter than 1 characters';
+            res.status(400)
+                .send('data.name should NOT be shorter than 1 characters');
+            return
+        }
+    }
 
-    if (email.length < 1) {
-        res.statusMessage = 'Bad Request: data.email should NOT be shorter than 1 characters';
-        res.status(400)
-            .send('data.email should NOT be shorter than 1 characters');
-        return
-    } else if (password.length < 1) {
-        res.statusMessage = 'Bad Request: data.password should NOT be shorter than 1 characters';
-        res.status(400)
-            .send('data.password should NOT be shorter than 1 characters');
-        return
-    } else if (emailValidator.validate(email) === false) {
+    let email = req.body['email'].toString();
+    let password = req.body['password'].toString();
+
+    if (!emailValidator.validate(email)) {
         res.statusMessage = 'Bad Request: data.email should match format \'email\'';
         res.status(400)
             .send('Bad Request: data.email should match format \'email\'');
@@ -101,8 +105,24 @@ exports.login = async function (req, res) {
 
     try {
         let token = cryptoRandomString({length: 32, type: 'base64'});
-        // CREATE MODEL FUNCTION FOR Dat
-        const response = await User.login(email, password, token);
+        let isInDatabase = await User.checkIfUserInDatabase(email);
+        if (!isInDatabase) {
+            res.statusMessage = 'Bad Request: Invalid email/password supplied';
+            res.status(400)
+                .send('Invalid email/password supplied');
+            return
+        }
+
+        let isCorrectPassword = await User.checkCurrentPassword(email, password);
+        if (!isCorrectPassword) {
+            res.statusMessage = 'Bad Request: Invalid email/password supplied';
+            res.status(400)
+                .send('Invalid email/password supplied');
+            return
+        }
+
+        await User.updateToken(email, token);
+        const response = await User.login(email, token);
         if (response === undefined) {
             res.statusMessage = 'Bad Request: Invalid email/password supplied';
             res.status(400)
@@ -197,21 +217,21 @@ exports.update = async function (req, res) {
             return
         }
 
-        const user_data = req.body;
-        if (_.isEmpty(user_data)) {
+        const userData = req.body;
+        if (_.isEmpty(userData)) {
             res.statusMessage = 'Bad Request: you must provide some details to update';
             res.status(400)
                 .send();
             return
         }
 
-        for (let property in user_data) {
-            if (user_data[property] !== undefined && typeof user_data[property] !== "string") {
+        for (let property in userData) {
+            if (userData[property] !== undefined && typeof userData[property] !== "string") {
                 res.statusMessage = 'Bad Request: ' + property + ' should be string';
                 res.status(400)
                     .send('Bad Request: ' + property + ' should be string');
                 return
-            } else if (user_data[property] !== undefined && user_data[property].toString().length < 1) {
+            } else if (userData[property] !== undefined && userData[property].toString().length < 1) {
                 res.statusMessage = 'Bad Request: ' + property + ' should NOT be shorter than 1 characters';
                 res.status(400)
                     .send('data.name should NOT be shorter than 1 characters');
@@ -219,12 +239,12 @@ exports.update = async function (req, res) {
             }
         }
 
-        if (user_data['email'] !== undefined && !emailValidator.validate(user_data['email'].toString())) {
-            res.statusMessage = 'Bad Request: ' + user_data['email'] + ' should match format \'email\'';
+        if (userData['email'] !== undefined && !emailValidator.validate(userData['email'].toString())) {
+            res.statusMessage = 'Bad Request: ' + userData['email'] + ' should match format \'email\'';
             res.status(400)
-                .send('Bad Request: ' + user_data['email'] + ' should match format \'email\'');
+                .send('Bad Request: ' + userData['email'] + ' should match format \'email\'');
             return
-        } else if (user_data['password'] === undefined) {
+        } else if (userData['password'] === undefined) {
             res.statusMessage = 'Internal Server Error';
             res.status(500)
                 .send('Please provide password that you want to change to');
@@ -233,7 +253,7 @@ exports.update = async function (req, res) {
 
         // check if currentPassword correct
         // includes case if currentPassword is null
-        let isCurrentPassword = await User.checkCurrentPassword(userId, user_data['currentPassword']);
+        let isCurrentPassword = await User.checkCurrentPassword(parseInt(userId), userData['currentPassword']);
         if (!isCurrentPassword) {
             res.statusMessage = 'Bad Request: incorrect password';
             res.status(400)
@@ -241,15 +261,15 @@ exports.update = async function (req, res) {
             return
         }
 
-        let emailIsInUse = await User.checkIfEmailAlreadyInUse(userId, user_data['email']);
+        let emailIsInUse = await User.checkIfEmailAlreadyInUse(userId, userData['email']);
         if (emailIsInUse) {
-            res.statusMessage = 'Bad Request: email ' + user_data['email'] + ' is already in use';
+            res.statusMessage = 'Bad Request: email ' + userData['email'] + ' is already in use';
             res.status(400)
-                .send('Bad Request: email ' + user_data['email'] + ' is already in use');
+                .send('Bad Request: email ' + userData['email'] + ' is already in use');
             return
         }
 
-        let affectedRows = await User.alter(userId, user_data);
+        let affectedRows = await User.alter(userId, userData);
         res.statusMessage = 'OK';
         res.status(200)
             .send("Affected rows: " + affectedRows);

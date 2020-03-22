@@ -131,7 +131,7 @@ exports.getOne = async function (petitionId) {
 
 
     connection.release();
-    console.log(rows[0])
+    console.log(rows[0]);
     return rows[0];
 
 };
