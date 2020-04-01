@@ -2,9 +2,10 @@ const User = require('../models/user.model');
 const emailValidator = require('email-validator');
 const cryptoRandomString = require('crypto-random-string');
 const _ = require('underscore');
-const fs = require('fs');
+const fs = require('mz/fs');
 
 const PHOTO_DIRECTORY = './storage/photos/';
+
 
 exports.create = async function (req, res) {
     const userData = req.body;
@@ -316,7 +317,6 @@ exports.readPhoto = async function (req, res) {
 
 exports.uploadPhoto = async function (req, res) {
     // Check if a user is logged in by validating userId and token
-
     // if not logged in 401 Unauthorised (no auth token) or IF AUTH TOKEN IS NOT IN DATABASE
     const userId = req.params.id;
     const authToken = req.headers['x-authorization'];
@@ -362,7 +362,7 @@ exports.uploadPhoto = async function (req, res) {
         await fs.writeFile('./storage/default/' + filename, req.body, 'binary', () => {});
 
         let currentPhoto = await User.getUserPhotoFilename(userId);
-        let insertId = await User.insertPhoto(userId, filename);
+        await User.insertPhoto(userId, filename);
         if (!currentPhoto) {
             res.statusMessage = 'Created';
             res.status(201)
@@ -420,10 +420,10 @@ exports.deletePhoto = async function (req, res) {
                 .send();
             return
         } else {
-            await User.deletePhoto(userId);
+            let affectedRows = await User.deletePhoto(userId);
             res.statusMessage = 'OK';
             res.status(200)
-                .send(`Deleted photo`);
+                .send("Deleted row: " + affectedRows);
         }
     } catch (err) {
         res.statusMessage = 'Internal Server Error';
@@ -431,15 +431,4 @@ exports.deletePhoto = async function (req, res) {
         console.error(err);
     }
 };
-
-// encrypt password mane
-
-// 401 Unauthorised if non-user tries to delete photo (x auth)
-// 404 Not Found if user logged in but cant find user
-// 403 Forbidden user logged in but not userId
-
-// 404 Not Found if user doesn't have image in db
-// 200 OK if deletion success
-
-
 

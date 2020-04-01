@@ -1,20 +1,5 @@
 const db = require('../../config/db');
 
-exports.checkCategoryId = async function (categoryId) {
-    const connection = await db.getPool().getConnection();
-    let query = 'SELECT * FROM Category WHERE category_id = ?';
-    let values = [categoryId];
-    let [rows] = await connection.query(query, values);
-    let categoryIdExists = false;
-
-    if (rows[0] !== undefined) {
-        categoryIdExists = true;
-    }
-
-    connection.release();
-    return categoryIdExists;
-};
-
 
 exports.getFilteredPetitions = async function (filters, sortBy, count, startIndex) {
     const connection = await db.getPool().getConnection();
@@ -97,11 +82,8 @@ exports.insert = async function (petitionData, userId) {
         [petitionData['closingDate'].toString()]
     ];
 
-    console.log(values)
-
     let query = 'INSERT INTO Petition (title, description, author_id, category_id, created_date, closing_date) ' +
                 'VALUES (?, ?, ?, ?, ?, ?)';
-
     let [rows] = await connection.query(query, values);
     let response = {"petitionId" : rows.insertId};
 
@@ -122,18 +104,146 @@ exports.getOne = async function (petitionId) {
             'INNER JOIN User AS u ON p.author_id = u.user_id ' +
             'INNER JOIN Category AS c ON p.category_id = c.category_id ' +
             'WHERE petition_id = ?';
-
-    console.log(query)
-
-
     let [rows] = await connection.query(query, [petitionId]);
 
-
-
     connection.release();
-    console.log(rows[0]);
     return rows[0];
-
 };
 
 
+exports.validatePetition = async function (petitionId) {
+    const connection = await db.getPool().getConnection();
+    let query = 'SELECT * FROM Petition WHERE petition_id = ?';
+    let [rows] = await connection.query(query, petitionId);
+    let isValidPetition = false;
+
+    if (rows[0] !== undefined) {
+        isValidPetition = true;
+    }
+
+    connection.release();
+    return isValidPetition;
+};
+
+
+exports.getAuthor = async function (petitionId) {
+    const connection = await db.getPool().getConnection();
+    let query = 'SELECT author_id FROM Petition WHERE petition_id = ?';
+    let [rows] = await connection.query(query, petitionId);
+
+    connection.release();
+    return rows[0]['author_id'];
+};
+
+
+exports.checkIfPetitionBelongsToUser = async function (petitionId, userId) {
+    const connection = await db.getPool().getConnection();
+    let query = 'SELECT * FROM Petition WHERE petition_id = ? AND author_id = ?';
+    let values = [
+        [petitionId],
+        [userId]
+    ];
+    let [rows] = await connection.query(query, values);
+    let isBelongsToUser = false;
+
+    if (rows[0] !== undefined) {
+        isBelongsToUser = true;
+        console.log("Petition belongs to user " + userId)
+    }
+
+    connection.release();
+    return isBelongsToUser;
+};
+
+
+exports.alter = async function (petitionId, petitionData) {
+    const connection = await db.getPool().getConnection();
+    let values = [];
+    let updateQuery = 'UPDATE Petition SET ';
+    let whereQuery = ' WHERE petition_id = ?';
+    let validProperties = ['title', 'description', 'categoryId', 'closingDate']
+    let firstUpdated = true;
+
+
+    for (let property in petitionData) {
+        if (!validProperties.includes(property)) {
+            continue;
+        }
+
+        if (firstUpdated) {
+            values.push([petitionData[property].toString()]);
+            if (property === 'closingDate') {
+                property = 'closing_date';
+            } else if (property === 'categoryId') {
+                property = 'category_id';
+            }
+            updateQuery += property + " = ?";
+            firstUpdated = false;
+        } else {
+            values.push([petitionData[property].toString()]);
+            if (property === 'closingDate') {
+                property = 'closing_date';
+            } else if (property === 'categoryId') {
+                property = 'category_id';
+            }
+            updateQuery += ", " + property + " = ?";
+        }
+    }
+
+    let query = updateQuery + whereQuery;
+    values.push([petitionId]);
+    let [rows] = await connection.query(query, values);
+
+    connection.release();
+    return rows.affectedRows;
+};
+
+
+exports.deleteOne = async function (petitionId, userId) {
+    const connection = await db.getPool().getConnection();
+    let query = 'DELETE FROM Petition WHERE petition_id = ? AND author_id = ?';
+    let values = [
+        [petitionId],
+        [userId]
+    ];
+    let [rows] = await connection.query(query, values);
+
+    connection.release();
+    return rows.affectedRows;
+};
+
+
+exports.getPetitionPhotoFilename = async function (petitionId) {
+    const connection = await db.getPool().getConnection();
+
+    let query = 'SELECT photo_filename as photoFilename FROM Petition WHERE petition_id = ?';
+    let [rows] = await connection.query(query, petitionId);
+
+    connection.release();
+    return rows[0]['photoFilename'];
+};
+
+
+exports.getUserPhotoFilename = async function (petitionId) {
+    const connection = await db.getPool().getConnection();
+
+    let query = 'SELECT photo_filename as photoFilename FROM Petition WHERE petition_id = ?';
+    let [rows] = await connection.query(query, petitionId);
+
+    connection.release();
+    return rows[0]['photoFilename'];
+};
+
+
+exports.insertPhoto = async function (petitionId, filename) {
+    const connection = await db.getPool().getConnection();
+    let query = 'UPDATE Petition SET photo_filename = ? WHERE petition_id = ?';
+    let values = [
+        [ filename ],
+        [ petitionId ]
+    ];
+
+    let [rows] = await connection.query(query, values);
+
+    connection.release();
+};

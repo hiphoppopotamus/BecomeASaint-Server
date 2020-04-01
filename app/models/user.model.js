@@ -280,7 +280,6 @@ exports.insertPhoto = async function (userId, filename) {
     let [rows] = await connection.query(query, values);
 
     connection.release();
-    return rows.insertId;
 };
 
 
@@ -290,6 +289,5 @@ exports.deletePhoto = async function (userId) {
 
     let [rows] = await connection.query(query, [userId]);
     connection.release();
-    console.log(rows);
-    return rows;
+    return rows.affectedRows;
 };
